@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/optimcp/"><img alt="PyPI" src="https://img.shields.io/pypi/v/optimcp.svg"></a>
+  <a href="https://pypi.org/project/optimcp/"><img alt="PyPI" src="https://img.shields.io/pypi/v/optimcp.svg?v=2"></a>
   <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-blue.svg">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-BUSL--1.1-green.svg"></a>
   <img alt="MCP" src="https://img.shields.io/badge/MCP-compatible-8A2BE2.svg">
