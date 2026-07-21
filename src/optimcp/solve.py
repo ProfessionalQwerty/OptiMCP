@@ -94,7 +94,7 @@ def solve_decision(
     # 1) Engine attempt (quantum, invisible) - skippable for fallback testing.
     if not _force_engine_failure:
         engine_assignment, engine_error = _try_engine(spec, filtered)
-        consider(engine_assignment, "qbridge")
+        consider(engine_assignment, "engine")
     else:
         engine_error = "engine skipped (forced fallback)"
 
@@ -157,6 +157,9 @@ def solve_decision(
         result.diagnostics = {
             "winning_source": engine_used,
             "sources_considered": [c[2] for c in candidates],
+            "candidates": [
+                {"source": c[2], "objective": c[1]} for c in candidates
+            ],
             "engine_error": engine_error,
             "classical_notes": classical_notes,
             "elapsed_ms": round(elapsed_ms, 2),

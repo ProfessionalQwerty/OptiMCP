@@ -13,7 +13,7 @@
 
 LLM agents are good at *proposing* decisions and bad at *guaranteeing* them. Ask one to pick projects under a budget, staff shifts without leaving a gap, or build a portfolio under a diversification rule, and it will hand you an answer that sometimes quietly violates the very constraint you told it about. OptiMCP is a tool you plug into the agent: it takes the decision as **structured data**, solves it deterministically, and then **independently re-verifies** the answer against those constraints before returning it.
 
-There is **no LLM inside OptiMCP**. The agent fills a structured schema; the mapping from that schema to a checked answer is deterministic. The optimization engine underneath (QBridge / QOKit) is invisible plumbing — you never need any quantum vocabulary to use the tool.
+There is **no LLM inside OptiMCP**. The agent fills a structured schema; the mapping from that schema to a checked answer is deterministic. The optimization engine underneath is invisible plumbing — you never need any special vocabulary to use the tool.
 
 ```mermaid
 flowchart TB
@@ -22,7 +22,7 @@ flowchart TB
   end
   subgraph OptiMCP [OptiMCP tool]
     Spec --> Build[Deterministic builder]
-    Build --> Engine[QBridge engine · QOKit default]
+    Build --> Engine[Optimization engine]
     Build --> Classical[Classical exact / heuristic]
     Engine --> Verify[Independent verifier]
     Classical --> Verify
@@ -72,7 +72,7 @@ OptiMCP is **not** a general planner or an LLM wrapper. It is a **constraint-sol
 **Requirements**
 
 - Python **3.10+**
-- No GPU, no CUDA, no WSL. The default engine (QOKit, via QBridge) runs on CPU on Windows/macOS/Linux; if it isn't present, an exact/heuristic classical solver is used instead.
+- No GPU, no CUDA, no WSL. The default optimization engine runs on CPU on Windows/macOS/Linux; if it isn't present, an exact/heuristic classical solver is used instead.
 
 **PyPI**
 
@@ -83,7 +83,7 @@ pip install optimcp
 **Extras**
 
 ```bash
-pip install "optimcp[qokit]"      # QOKit engine (recommended; CPU, cross-platform)
+pip install "optimcp[qokit]"      # accelerated optimization engine (recommended; CPU, cross-platform)
 pip install "optimcp[langchain]"  # LangChain StructuredTool adapter
 pip install "optimcp[dev]"        # pytest for the test suite
 ```
@@ -321,7 +321,7 @@ The verifier is **adversarially hardened**: a miscased or missing variable is re
 ```mermaid
 flowchart LR
   Spec[DecisionSpec] --> Build[Deterministic builder]
-  Build --> Engine["QBridge engine\n(QOKit default, invisible)"]
+  Build --> Engine["Optimization engine\n(invisible)"]
   Build --> Classical["Classical solver\nexact ≤ 2M states · heuristic above"]
   Engine --> V[Independent verifier]
   Classical --> V
@@ -329,12 +329,75 @@ flowchart LR
   Pick --> Out[DecisionResult + certificate]
 ```
 
-1. The structured spec is compiled deterministically into a QBridge optimization problem.
-2. **Two solvers run:** the QBridge engine (QOKit by default) and a classical solver (exact enumeration when the state space is ≤ 2,000,000, a heuristic otherwise).
+1. The structured spec is compiled deterministically into an internal optimization problem.
+2. **Two solvers run:** the built-in optimization engine and a classical solver (exact enumeration when the state space is ≤ 2,000,000, a heuristic otherwise).
 3. Every candidate is **independently re-verified** against the raw spec.
 4. The **best verified answer by objective value** is returned. On small problems this guarantees the exact optimum rather than whatever feasible sample the engine happened to produce; on large problems it returns the best verified answer found.
 
 You only ever see step 3's verdict: a feasible, verified answer — or an honest `infeasible` / `no_feasible_found` status.
+
+---
+
+## Two engines, one best answer (worked example)
+
+Most solvers give you *one* algorithm's answer and trust it. OptiMCP runs **two** — a fast optimization engine and a classical exact/heuristic solver — independently verifies both, and returns the better one. Turn on diagnostics and you can watch it happen:
+
+```python
+from optimcp.solve import solve_decision
+from optimcp.spec import DecisionSpec
+
+# Pick the most valuable items that fit within a weight budget of 40.
+knapsack = DecisionSpec.model_validate({
+    "variables": [{"name": "a"}, {"name": "b"}, {"name": "c"}, {"name": "d"}],
+    "objective": {"sense": "maximize", "terms": [
+        {"vars": ["a"], "coeff": 60}, {"vars": ["b"], "coeff": 100},
+        {"vars": ["c"], "coeff": 120}, {"vars": ["d"], "coeff": 40},
+    ]},
+    "constraints": [{"name": "weight", "op": "<=", "rhs": 40, "terms": [
+        {"vars": ["a"], "coeff": 10}, {"vars": ["b"], "coeff": 20},
+        {"vars": ["c"], "coeff": 30}, {"vars": ["d"], "coeff": 15},
+    ]}],
+})
+
+result = solve_decision(knapsack, include_diagnostics=True)
+
+print(result.objective_value)               # 180.0
+print(result.diagnostics["winning_source"]) # 'exact_enumeration'
+print(result.diagnostics["candidates"])
+# [{'source': 'engine',            'objective': 100.0},
+#  {'source': 'exact_enumeration', 'objective': 180.0}]
+```
+
+Read that `candidates` list carefully — it's the whole pitch in three lines:
+
+- The fast engine, **on its own**, returned a *valid but suboptimal* answer worth **100**. It respects the weight limit, so nothing looks wrong: a tool built on that one engine would hand you 100 and call it solved.
+- The classical exact tier found the **true optimum worth 180**.
+- Because OptiMCP verifies **both** and keeps the better one, you get **180** — the single-engine answer would have quietly left **80 points of value** on the table.
+
+**It cuts the other way too — knowing when there is *no* answer:**
+
+```python
+# "Choose at least 2" and "choose at most 1" cannot both hold.
+impossible = DecisionSpec.model_validate({
+    "variables": [{"name": "x"}, {"name": "y"}],
+    "objective": {"sense": "maximize",
+                  "terms": [{"vars": ["x"], "coeff": 1}, {"vars": ["y"], "coeff": 1}]},
+    "constraints": [
+        {"name": "at_least_2", "op": ">=", "rhs": 2,
+         "terms": [{"vars": ["x"], "coeff": 1}, {"vars": ["y"], "coeff": 1}]},
+        {"name": "at_most_1", "op": "<=", "rhs": 1,
+         "terms": [{"vars": ["x"], "coeff": 1}, {"vars": ["y"], "coeff": 1}]},
+    ],
+})
+
+result = solve_decision(impossible)
+print(result.status)   # 'infeasible'
+print(result.message)  # 'No assignment can satisfy all constraints (proven by exhaustive search).'
+```
+
+A sampler-style engine never says "impossible" — it always emits *some* answer, so a single-engine tool would confidently return a constraint-violating result. OptiMCP's exact tier **proves** infeasibility instead of guessing.
+
+**Net effect: you are never worse off than the better of the two engines** — the true optimum (or a proof that none exists) on small problems, and the best verified answer found on large ones.
 
 ---
 
@@ -440,7 +503,7 @@ OptiMCP/
   README.md                 This file
   src/optimcp/
     spec.py                 DecisionSpec + validation (the whole input contract)
-    builder.py              Deterministic DecisionSpec -> qbridge problem
+    builder.py              Deterministic DecisionSpec -> optimization problem
     verify.py               Independent constraint/domain verifier (trust anchor)
     classical.py            Exact enumeration + heuristic reliability backbone
     solve.py                Orchestrator: engine + classical, verify, best wins
@@ -453,7 +516,7 @@ OptiMCP/
   tests/                    Spec / builder / verify / solve / server tests
 ```
 
-OptiMCP builds on the `qbridge` optimization engine (installed from PyPI) and wraps it with a structured decision spec and an independent verification layer.
+OptiMCP wraps a fast optimization engine (installed automatically from PyPI) with a structured decision spec and an independent verification layer.
 
 ---
 
