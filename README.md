@@ -2,6 +2,13 @@
   <strong>OptiMCP</strong> — a decision engine that can't lie about the constraints
 </p>
 
+<p align="center">
+  <a href="https://pypi.org/project/optimcp/"><img alt="PyPI" src="https://img.shields.io/pypi/v/optimcp.svg"></a>
+  <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-blue.svg">
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-BUSL--1.1-green.svg"></a>
+  <img alt="MCP" src="https://img.shields.io/badge/MCP-compatible-8A2BE2.svg">
+</p>
+
 **Give any AI agent (Claude, GPT, LangChain, …) a tool that turns "here's a decision under these constraints" into a verified, constraint-satisfying answer — instead of an LLM confidently blowing a budget or double-booking a resource.**
 
 LLM agents are good at *proposing* decisions and bad at *guaranteeing* them. Ask one to pick projects under a budget, staff shifts without leaving a gap, or build a portfolio under a diversification rule, and it will hand you an answer that sometimes quietly violates the very constraint you told it about. OptiMCP is a tool you plug into the agent: it takes the decision as **structured data**, solves it deterministically, and then **independently re-verifies** the answer against those constraints before returning it.
