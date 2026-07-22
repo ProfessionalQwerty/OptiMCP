@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from optimcp.spec import DecisionSpec
+from optimcp.solver.spec import DecisionSpec
 
 VALID = {
     "variables": [

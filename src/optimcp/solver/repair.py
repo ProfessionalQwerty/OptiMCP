@@ -20,9 +20,9 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
 from optimcp.check.rules import Expr, Rule, Ruleset
-from optimcp.result import DecisionResult
-from optimcp.solve import solve_decision
-from optimcp.spec import ConstraintSpec, DecisionSpec, ObjectiveSpec, Term, VariableSpec
+from optimcp.solver.result import DecisionResult
+from optimcp.solver.solve import solve_decision
+from optimcp.solver.spec import ConstraintSpec, DecisionSpec, ObjectiveSpec, Term, VariableSpec
 
 
 class NotLinear(Exception):

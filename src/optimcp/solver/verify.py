@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from typing import Dict, List, Sequence
 
-from optimcp.result import ConstraintCheck, VerificationCertificate
-from optimcp.spec import ConstraintSpec, DecisionSpec, Op, Term
+from optimcp.solver.result import ConstraintCheck, VerificationCertificate
+from optimcp.solver.spec import ConstraintSpec, DecisionSpec, Op, Term
 
 # Tolerance for floating-point comparisons (coeffs/rhs may be non-integer).
 _EPS = 1e-6

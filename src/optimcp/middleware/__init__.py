@@ -9,6 +9,7 @@ from optimcp.middleware.client import (
     verify_local_or_remote,
     verify_remote,
 )
+from optimcp.middleware.langchain import build_check_consistency_tool
 from optimcp.middleware.openai_wrap import VerifyingOpenAI, extract_json_object
 from optimcp.middleware.policy import (
     VerificationRefused,
@@ -21,6 +22,7 @@ __all__ = [
     "VerificationRefused",
     "VerifyingOpenAI",
     "apply_policy",
+    "build_check_consistency_tool",
     "daemon_token",
     "daemon_url",
     "extract_json_object",

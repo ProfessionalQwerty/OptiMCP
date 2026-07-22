@@ -9,7 +9,7 @@ and trusts neither blindly:
      quantum-inspired heuristic sampler; a genuinely different method.
 
 Every assignment either engine proposes is independently re-checked against the
-raw spec by :func:`optimcp.verify.verify_assignment` (this repository's actual
+raw spec by :func:`optimcp.solver.verify.verify_assignment` (this repository's actual
 engineering focus). Only *verified-feasible* candidates compete, and the best one
 by objective value is returned.
 
@@ -25,11 +25,11 @@ from __future__ import annotations
 import time
 from typing import Dict, List, Optional, Tuple
 
-from optimcp.engines.annealer import solve_annealer
-from optimcp.engines.cpsat import solve_cpsat
-from optimcp.result import DecisionResult, VerificationCertificate
-from optimcp.spec import DecisionSpec
-from optimcp.verify import verify_assignment
+from optimcp.solver.engines.annealer import solve_annealer
+from optimcp.solver.engines.cpsat import solve_cpsat
+from optimcp.solver.result import DecisionResult, VerificationCertificate
+from optimcp.solver.spec import DecisionSpec
+from optimcp.solver.verify import verify_assignment
 
 # Ordered so the exact engine is tried first; ties in objective keep its answer.
 _ENGINES = (

@@ -51,7 +51,7 @@ This isn't finance-only. Anywhere an agent emits **numbers or facts subject to r
 | To never be lied to by silence | Unevaluable rules (missing/non-numeric) count as **failed**, never skipped |
 | Safe self-hosting | Bearer token on all `/v1/*` (`OPTIMCP_DAEMON_TOKEN`); unauthenticated only with explicit loopback opt-out |
 | To wire it into any stack | MCP tools, OpenAI wrapper, LangChain callback, HTTP `/v1/check` |
-| A corrected answer when it makes sense | `solve_decision` — optional repair for linear numeric problems |
+| Optional linear repair | `pip install optimcp[solver]` → `optimcp.solver.try_repair` |
 
 ---
 
@@ -65,13 +65,12 @@ This isn't finance-only. Anywhere an agent emits **numbers or facts subject to r
 6. [The report payload](#the-report-payload)
 7. [What it catches (worked example)](#what-it-catches-worked-example)
 8. [How it works](#how-it-works)
-9. [Does it actually help? (benchmark)](#does-it-actually-help-benchmark)
-10. [What "guaranteed" means (honestly)](#what-guaranteed-means-honestly)
-11. [Optional: repair a broken answer](#optional-repair-a-broken-answer)
-12. [Examples](#examples)
-13. [Troubleshooting](#troubleshooting)
-14. [Repository layout](#repository-layout)
-15. [License](#license)
+9. [What "guaranteed" means (honestly)](#what-guaranteed-means-honestly)
+10. [Optional: solver extra](#optional-solver-extra)
+11. [Examples](#examples)
+12. [Troubleshooting](#troubleshooting)
+13. [Repository layout](#repository-layout)
+14. [License](#license)
 
 ---
 
@@ -80,15 +79,16 @@ This isn't finance-only. Anywhere an agent emits **numbers or facts subject to r
 **Requirements**
 
 - Python **3.10+**
-- The checker itself is pure Python + Pydantic. The optional repair engine uses Google OR-Tools CP-SAT and D-Wave `dwave-samplers`. The daemon extras add FastAPI/uvicorn.
+- Core: pure Python + Pydantic + MCP. Daemon extras add FastAPI/uvicorn. Solver extras add OR-Tools + D-Wave samplers.
 
 **PyPI**
 
 ```bash
 pip install optimcp
 pip install "optimcp[daemon]"     # always-on HTTP daemon + YAML rulesets
-pip install "optimcp[langchain]"  # LangChain adapters
-pip install "optimcp[dev]"        # pytest + daemon test deps
+pip install "optimcp[langchain]"  # LangChain StructuredTool + callbacks
+pip install "optimcp[solver]"     # optional CP-SAT + annealer repair path
+pip install "optimcp[dev]"        # pytest + daemon + solver test deps
 ```
 
 | Command / module | Purpose |
@@ -161,7 +161,7 @@ print(report.summary)
 }
 ```
 
-Your agent now has: `verify_against_ruleset`, `list_rulesets`, `check_consistency`, `solve_decision`, `verify_solution`, `capabilities`.
+Your agent now has: `verify_against_ruleset`, `list_rulesets`, `check_consistency`, `capabilities`.
 
 ---
 
@@ -180,14 +180,14 @@ def dispatch(name, arguments):    # call this from your tool-call loop
         return check_consistency(arguments["document"], arguments["rules"]).model_dump()
 ```
 
-Full, runnable example (a live model drafts an invoice, OptiMCP audits its arithmetic): [`examples/check_consistency.py`](examples/check_consistency.py).
+Full runnable middleware example: [`examples/middleware_openai.py`](examples/middleware_openai.py).
 
 ### LangChain / LangGraph
 
 ```python
-from optimcp.adapters.langchain import build_check_consistency_tool
+from optimcp.middleware.langchain import build_check_consistency_tool
 
-tool = build_check_consistency_tool()   # a StructuredTool; pass to tools=[...]
+tool = build_check_consistency_tool()   # StructuredTool; pass to tools=[...]
 ```
 
 Requires `pip install "optimcp[langchain]"`.
@@ -300,77 +300,36 @@ That independence is the whole point: it is the check an LLM's own reasoning can
 
 ---
 
-## Does it actually help? (benchmark)
-
-Two things measured separately, and reported honestly.
-
-**1. Is the checker trustworthy?** We generate **1200 known-correct documents** across six scenario types and check them. A correct document must produce zero violations:
-
-| Known-correct documents checked | False positives |
-|---:|---:|
-| **1200** | **0** |
-
-**2. Does a capable model emit self-inconsistent numbers — and where?** A capable model (`gemini-flash-lite-latest`, N=20 per scenario, 120 generations) produces structured output; the checker measures how often that output breaks its own stated rules:
-
-| Scenario | Category | Self-violation rate |
-|---|---|:---:|
-| invoice / budget / crossfoot | multivariate | **0%** (0/60) |
-| growth | derived | **0%** (0/20) |
-| perturbed income statement | perturbed | **0%** (0/20) |
-| **long-context aggregation** (sum ~24 amounts buried in a long log) | long-context | **100%** (20/20) |
-
-The finding is specific and honest: **on short, self-contained tasks a capable model is reliable** — OptiMCP doesn't pretend otherwise. But the moment it has to **aggregate many numbers scattered through a long context**, it gets the total wrong *every single time* (while still counting the items and finding the max correctly — it can *see* the data, it just can't reliably *combine* it). That is exactly the "collapses on multivariate calculation under context" mode the research describes, and it is precisely what the model **cannot self-detect**. The deterministic checker catches 100% of these with 0 false positives — that gap is the product.
-
-Full methodology and numbers: [`benchmarks/CONSISTENCY_BENCHMARK.md`](benchmarks/CONSISTENCY_BENCHMARK.md). Reproduce:
-
-```bash
-# deterministic false-positive audit (no API key):
-python benchmarks/consistency_benchmark.py --fp-only
-
-# full run (LLM self-violation + FP audit):
-setx GEMINI_API_KEY ...     # or OPENROUTER_API_KEY / OPENAI_API_KEY
-python benchmarks/consistency_benchmark.py
-```
-
----
-
 ## What "guaranteed" means (honestly)
 
 - **Guaranteed:** for each rule, the verdict (held / violated / unevaluable) is computed **correctly and independently** of whatever produced the document, in exact arithmetic. A false "consistent" cannot come from float drift, a silently skipped rule, or a missing field.
 - **Scope:** the checker verifies the rules you *wrote down*, not the ones you *meant*. If you forget to declare "segments must sum to total," it won't invent it. Declare the invariants that matter; the report echoes each one back.
 - **Not claimed:** that your ruleset is complete, or that a `consistent` document is "correct" in some larger sense — only that it satisfies the stated rules.
-- **False positives:** the checker is audited against known-correct documents and flags zero of them (see the benchmark). It errs toward *reporting* problems (unevaluable rules count as failures), never toward hiding them.
+- **False positives:** the checker is covered by unit tests against known-correct and known-broken documents. It errs toward *reporting* problems (unevaluable rules count as failures), never toward hiding them.
 
 ---
 
-## Optional: repair a broken answer
+## Optional: solver extra
 
-Detecting the break is the product. Sometimes you also want a corrected answer. When (and only when) your rules are **linear over scalar fields**, OptiMCP can reduce them to a solvable spec and hand it to a solver that returns an independently-verified fix:
+Detecting the break is the product. For **linear scalar** rules only, install the optional solver and call `try_repair`:
+
+```bash
+pip install "optimcp[solver]"
+```
 
 ```python
 from optimcp.check.rules import Ruleset, Rule
-from optimcp.check.repair import try_repair
+from optimcp.solver import try_repair
 
-rules = Ruleset(rules=[
-    Rule.model_validate({"id": "sum", "op": "==", "rhs": {"kind": "lit", "value": 10},
-        "lhs": {"kind": "calc", "fn": "add",
-                "args": [{"kind": "ref", "path": "a"}, {"kind": "ref", "path": "b"}]}}),
-    Rule.model_validate({"id": "diff", "op": "==", "rhs": {"kind": "lit", "value": 2},
-        "lhs": {"kind": "calc", "fn": "sub",
-                "args": [{"kind": "ref", "path": "a"}, {"kind": "ref", "path": "b"}]}}),
-])
-
-# You supply the variable domains + what to optimize (the rules alone don't say).
+rules = Ruleset(rules=[...])  # linear rules over scalar refs only
 fixed = try_repair(
     rules,
-    variables=[{"name": "a", "kind": "integer", "lb": 0, "ub": 10},
-               {"name": "b", "kind": "integer", "lb": 0, "ub": 10}],
+    variables=[{"name": "a", "kind": "integer", "lb": 0, "ub": 10}, ...],
     objective={"sense": "maximize", "terms": [{"vars": ["a"]}]},
 )
-print(fixed.assignment)   # {'a': 6, 'b': 4}   (a+b=10, a-b=2), independently verified
 ```
 
-Anything outside the linear-scalar subset (aggregations, division by a variable, products of two fields) returns `None` — OptiMCP reports the violation and refuses to guess. The underlying solver runs two independent engines (OR-Tools CP-SAT for exact answers, D-Wave simulated annealing for a second opinion) and re-verifies every candidate; `solve_decision` / `verify_solution` remain available directly for classic decision problems.
+Aggregations, division by a variable, or products of two fields are **not** repairable — the checker reports the violation and returns `None`. See `optimcp.solver` for `solve_decision`, `verify_assignment`, and function-calling schemas.
 
 ---
 
@@ -382,8 +341,6 @@ Anything outside the linear-scalar subset (aggregations, division by a variable,
 | [`examples/register_invoice_ruleset.yaml`](examples/register_invoice_ruleset.yaml) | Sample named ruleset (`refuse`) |
 | [`examples/middleware_openai.py`](examples/middleware_openai.py) | OpenAI wrapper refuses a bad invoice |
 | [`examples/always_on_loop.py`](examples/always_on_loop.py) | Continuous ingest + violation stats |
-| [`examples/check_consistency.py`](examples/check_consistency.py) | Live model drafts an invoice; one-shot audit |
-| [`examples/check_financial_report.py`](examples/check_financial_report.py) | Wrong growth % + cross-footing (no API key) |
 | [`examples/mcp_config.json`](examples/mcp_config.json) | MCP client registration |
 
 ---
@@ -412,9 +369,8 @@ OptiMCP/
     daemon/         FastAPI app, bearer auth, dashboard, CLI
     middleware/     OpenAI wrap, LangChain helpers, refuse/observe policy
     server.py       MCP tools (verify_against_ruleset, check_consistency, …)
-    engines/        Optional CP-SAT + annealer repair path
+    solver/         Optional CP-SAT + annealer (pip install optimcp[solver])
   examples/
-  benchmarks/
   tests/
 ```
 

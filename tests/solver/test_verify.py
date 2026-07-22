@@ -1,7 +1,7 @@
 """Independent verifier: catches constraint violations and domain errors."""
 
-from optimcp.spec import DecisionSpec
-from optimcp.verify import verify_assignment
+from optimcp.solver.spec import DecisionSpec
+from optimcp.solver.verify import verify_assignment
 
 BUDGET_SPEC = DecisionSpec.model_validate(
     {

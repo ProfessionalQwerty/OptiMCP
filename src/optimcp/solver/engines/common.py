@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Iterable, Optional
 
-from optimcp.spec import DecisionSpec
+from optimcp.solver.spec import DecisionSpec
 
 Assignment = Dict[str, int]
 

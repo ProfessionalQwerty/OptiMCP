@@ -1,8 +1,12 @@
 """Engine adapters: CP-SAT (exact) and simulated annealing (heuristic)."""
 
-from optimcp.engines.annealer import solve_annealer
-from optimcp.engines.cpsat import solve_cpsat
-from optimcp.spec import DecisionSpec
+import pytest
+
+pytest.importorskip("ortools")
+
+from optimcp.solver.engines.annealer import solve_annealer
+from optimcp.solver.engines.cpsat import solve_cpsat
+from optimcp.solver.spec import DecisionSpec
 
 KNAPSACK = DecisionSpec.model_validate(
     {

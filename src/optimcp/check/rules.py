@@ -24,7 +24,8 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
-from optimcp.spec import Op
+# Comparison operators shared with the optional solver package.
+Op = Literal["<=", ">=", "==", "!=", "<", ">"]
 
 # ---- vocabulary ------------------------------------------------------------
 

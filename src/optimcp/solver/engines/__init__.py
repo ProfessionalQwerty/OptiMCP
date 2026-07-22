@@ -13,6 +13,6 @@ library or an unsupported problem shape degrades gracefully so the orchestrator
 can still use the other engine.
 """
 
-from optimcp.engines.common import EngineOutcome
+from optimcp.solver.engines.common import EngineOutcome
 
 __all__ = ["EngineOutcome"]

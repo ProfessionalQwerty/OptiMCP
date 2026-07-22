@@ -17,9 +17,9 @@ degrade to "unavailable" so the orchestrator falls back to CP-SAT.
 
 from __future__ import annotations
 
-from optimcp.engines.common import EngineOutcome
-from optimcp.spec import DecisionSpec
-from optimcp.verify import verify_assignment
+from optimcp.solver.engines.common import EngineOutcome
+from optimcp.solver.spec import DecisionSpec
+from optimcp.solver.verify import verify_assignment
 
 _NUM_READS = 200
 _SEED = 1234

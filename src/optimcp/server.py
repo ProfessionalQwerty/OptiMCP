@@ -5,9 +5,10 @@ Exposes tools over MCP (stdio by default; optional HTTP):
 * ``verify_against_ruleset`` - check a document against a *named* ruleset (daemon/store).
 * ``list_rulesets``          - list registered rulesets.
 * ``check_consistency``      - ad-hoc document + inline rules.
-* ``solve_decision``         - optional repair/optimization.
-* ``verify_solution``        - check a solver assignment.
 * ``capabilities``           - shapes/limits.
+
+Optional constraint solving (``solve_decision``, repair) is in
+:mod:`optimcp.solver` — install with ``pip install optimcp[solver]``.
 
 Run with the ``optimcp`` console script or ``python -m optimcp.server``.
 """
@@ -25,14 +26,6 @@ from optimcp.middleware.client import DaemonClientError, verify_local_or_remote
 from optimcp.middleware.policy import result_as_tool_error
 from optimcp.monitor.service import MonitorService, RulesetNotFound
 from optimcp.monitor.store import MonitorStore
-from optimcp.result import DecisionResult, VerificationCertificate
-from optimcp.solve import solve_decision as _solve_decision
-from optimcp.spec import (
-    MAX_TERM_DEGREE,
-    MAX_VARIABLES,
-    DecisionSpec,
-)
-from optimcp.verify import verify_assignment as _verify_assignment
 
 mcp = FastMCP(
     "optimcp",
@@ -42,8 +35,7 @@ mcp = FastMCP(
         "ruleset_id for always-on checking (observe or refuse policy). Use "
         "check_consistency for one-shot ad-hoc rules. Every check recomputes "
         "numbers independently (no LLM, exact decimal arithmetic) and reports "
-        "PROVABLY which rule broke. solve_decision remains available as an "
-        "optional repair path for linear numeric problems."
+        "PROVABLY which rule broke."
     ),
 )
 
@@ -113,34 +105,8 @@ def check_consistency(
 
 
 @mcp.tool()
-def solve_decision(spec: DecisionSpec) -> Dict[str, Any]:
-    """Solve a decision-under-constraints problem and return a verified answer.
-
-    Provide the decision as structured data: ``variables`` (binary yes/no or
-    bounded integer), an ``objective`` to maximize/minimize, and hard
-    ``constraints``. Returns the chosen ``assignment``, its ``objective_value``,
-    and a per-constraint ``verification`` certificate. ``status == 'solved'``
-    means the answer was independently verified to satisfy every constraint.
-    """
-    result: DecisionResult = _solve_decision(spec)
-    return result.model_dump()
-
-
-@mcp.tool()
-def verify_solution(spec: DecisionSpec, assignment: Dict[str, float]) -> Dict[str, Any]:
-    """Check whether a proposed ``assignment`` satisfies a decision's constraints.
-
-    Lets an agent verify an answer it produced itself (in text) against the hard
-    constraints, instead of trusting its own reasoning. Returns a certificate
-    with per-constraint satisfied/violated details and any domain issues.
-    """
-    certificate: VerificationCertificate = _verify_assignment(spec, assignment)
-    return certificate.model_dump()
-
-
-@mcp.tool()
 def capabilities() -> Dict[str, Any]:
-    """Describe what this server can check/solve and its limits."""
+    """Describe what this server can check and its limits."""
     return {
         "primary_tool": "verify_against_ruleset",
         "verification_layer": {
@@ -178,31 +144,10 @@ def capabilities() -> Dict[str, Any]:
                 "reported as failed, never silently skipped."
             ),
         },
-        "solve_decision": {
-            "purpose": "Optional repair/optimization for linear numeric problems.",
-            "variable_kinds": ["binary", "integer"],
-            "objective_senses": ["maximize", "minimize"],
-            "constraint_operators": ["<=", ">=", "==", "!=", "<", ">"],
-            "max_variables": MAX_VARIABLES,
-            "max_term_degree": MAX_TERM_DEGREE,
-            "engines": ["cp-sat", "simulated-annealing"],
-            "guarantee": "constraint satisfaction (independently verified), not global optimality",
-            "reliability_tiers": {
-                "verified_feasible": (
-                    "Any returned answer with status='solved' is independently "
-                    "re-checked to satisfy every constraint and variable domain."
-                ),
-                "exact_optimum": (
-                    "The CP-SAT engine (OR-Tools) solves exactly; when it reports "
-                    "OPTIMAL the answer is provably optimal, and it can also PROVE "
-                    "infeasibility (status='infeasible')."
-                ),
-                "heuristic": (
-                    "A simulated-annealing engine provides an independent second "
-                    "opinion; on hard problems it may only find a feasible answer, "
-                    "or none within its budget."
-                ),
-            },
+        "optional_solver": {
+            "install": "pip install optimcp[solver]",
+            "module": "optimcp.solver",
+            "tools": ["solve_decision", "verify_solution", "try_repair"],
         },
         "notes": [
             "Prefer named rulesets + daemon for production monitoring.",

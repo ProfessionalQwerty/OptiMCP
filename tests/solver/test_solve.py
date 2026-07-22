@@ -1,7 +1,11 @@
 """Solve orchestrator: verified feasible answers, honest statuses, fallback."""
 
-from optimcp.solve import solve_decision
-from optimcp.spec import DecisionSpec
+import pytest
+
+pytest.importorskip("ortools")
+
+from optimcp.solver import solve_decision
+from optimcp.solver.spec import DecisionSpec
 
 BUDGET_SPEC = DecisionSpec.model_validate(
     {

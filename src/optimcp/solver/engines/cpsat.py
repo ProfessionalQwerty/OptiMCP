@@ -15,8 +15,8 @@ from __future__ import annotations
 
 from typing import Dict
 
-from optimcp.engines.common import EngineOutcome, integer_scale, var_bounds
-from optimcp.spec import DecisionSpec, Term
+from optimcp.solver.engines.common import EngineOutcome, integer_scale, var_bounds
+from optimcp.solver.spec import DecisionSpec, Term
 
 
 def solve_cpsat(spec: DecisionSpec, *, max_time_s: float = 5.0) -> EngineOutcome:
