@@ -1,22 +1,4 @@
-"""The declarative rule language for the consistency checker.
-
-A *rule* asserts a numeric/logical relationship between two expressions computed
-from a JSON document, e.g. ``sum(line_items[*].amount) == invoice.total`` or
-``pct_change(prev_revenue, revenue) == stated_growth``. Rules are pure data:
-there is no natural-language parsing and no LLM anywhere in this package, which
-is exactly what lets the "provably tells you which rule broke" guarantee hold -
-the mapping from (document, rules) to a verdict is deterministic.
-
-An :class:`Expr` is a tiny JSON AST with four node kinds:
-
-* ``lit``  - a literal number (``value``).
-* ``ref``  - a single field, by path (``path``), e.g. ``"invoice.total"`` or
-  ``"line_items[0].amount"``. No wildcards.
-* ``agg``  - an aggregation (``fn`` in :data:`AGG_FNS`) over a wildcard path
-  (``path`` containing ``[*]``), e.g. ``sum`` of ``"line_items[*].amount"``.
-* ``calc`` - arithmetic (``fn`` in :data:`CALC_FNS`) over sub-expressions
-  (``args``), e.g. ``sub(total, subtotal)`` or ``pct_change(old, new)``.
-"""
+"""Declarative rule language: lit / ref / agg / calc expressions over JSON docs."""
 
 from __future__ import annotations
 
@@ -24,7 +6,6 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
-# Comparison operators shared with the optional solver package.
 Op = Literal["<=", ">=", "==", "!=", "<", ">"]
 
 # ---- vocabulary ------------------------------------------------------------

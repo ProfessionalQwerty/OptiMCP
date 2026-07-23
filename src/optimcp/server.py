@@ -1,16 +1,6 @@
-"""OptiMCP MCP server.
+"""OptiMCP MCP server (stdio by default).
 
-Exposes tools over MCP (stdio by default; optional HTTP):
-
-* ``verify_against_ruleset`` - check a document against a *named* ruleset (daemon/store).
-* ``list_rulesets``          - list registered rulesets.
-* ``check_consistency``      - ad-hoc document + inline rules.
-* ``capabilities``           - shapes/limits.
-
-Optional constraint solving (``solve_decision``, repair) is in
-:mod:`optimcp.solver` — install with ``pip install optimcp[solver]``.
-
-Run with the ``optimcp`` console script or ``python -m optimcp.server``.
+Tools: verify_against_ruleset, list_rulesets, check_consistency, capabilities.
 """
 
 from __future__ import annotations
@@ -30,12 +20,9 @@ from optimcp.monitor.store import MonitorStore
 mcp = FastMCP(
     "optimcp",
     instructions=(
-        "OptiMCP is the verification layer over whatever you write or fetch from "
-        "systems of record. Prefer verify_against_ruleset with a registered "
-        "ruleset_id for always-on checking (observe or refuse policy). Use "
-        "check_consistency for one-shot ad-hoc rules. Every check recomputes "
-        "numbers independently (no LLM, exact decimal arithmetic) and reports "
-        "PROVABLY which rule broke."
+        "Prefer verify_against_ruleset with a registered ruleset_id. "
+        "Use check_consistency for one-shot ad-hoc rules. "
+        "Checks use exact Decimal arithmetic (no LLM) and report which rule broke."
     ),
 )
 
@@ -110,10 +97,7 @@ def capabilities() -> Dict[str, Any]:
     return {
         "primary_tool": "verify_against_ruleset",
         "verification_layer": {
-            "purpose": (
-                "Always-on verification over agent structured emissions and "
-                "systems-of-record documents via named rulesets."
-            ),
+            "purpose": "Named rulesets over agent structured emissions and documents.",
             "tools": ["verify_against_ruleset", "list_rulesets", "check_consistency"],
             "daemon": {
                 "url_env": "OPTIMCP_DAEMON_URL",
@@ -127,10 +111,7 @@ def capabilities() -> Dict[str, Any]:
             "policies": ["observe", "refuse"],
         },
         "check_consistency": {
-            "purpose": (
-                "Ad-hoc: deterministically verify a JSON document against inline "
-                "rules and report exactly which rule broke."
-            ),
+            "purpose": "Ad-hoc verify of a JSON document against inline rules.",
             "expression_kinds": ["lit", "ref", "agg", "calc"],
             "aggregations": sorted(AGG_FNS),
             "arithmetic": sorted(CALC_FNS),
@@ -139,15 +120,9 @@ def capabilities() -> Dict[str, Any]:
             "tolerance": "per-rule abs_tol + rel_tol*|rhs|; comparisons run in exact Decimal arithmetic",
             "max_rules": MAX_RULES,
             "guarantee": (
-                "No LLM is used; every number is recomputed independently. A "
-                "rule that cannot be evaluated (missing/non-numeric field) is "
-                "reported as failed, never silently skipped."
+                "No LLM; numbers recomputed independently. Unevaluable rules "
+                "(missing/non-numeric) fail, never skip."
             ),
-        },
-        "optional_solver": {
-            "install": "pip install optimcp[solver]",
-            "module": "optimcp.solver",
-            "tools": ["solve_decision", "verify_solution", "try_repair"],
         },
         "notes": [
             "Prefer named rulesets + daemon for production monitoring.",

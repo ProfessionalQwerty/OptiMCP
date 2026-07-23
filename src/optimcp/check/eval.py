@@ -1,12 +1,4 @@
-"""Deterministic evaluation of rules against a document.
-
-All arithmetic runs in :class:`decimal.Decimal` so money, tax and percentage
-chains do not pick up binary-float drift (a report that says "off by
-0.00000001" would be worse than useless). String values are normalized (commas,
-currency symbols, accounting parentheses, ``k``/``m``/``b`` suffixes, trailing
-``%``) and every non-trivial coercion is recorded, because a silently-"fixed"
-unit is precisely the transcription bug this tool exists to surface.
-"""
+"""Decimal evaluation of rules against a document."""
 
 from __future__ import annotations
 

@@ -8,16 +8,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from optimcp.check.rules import Rule
-from optimcp.monitor.hashing import document_hash
-from optimcp.monitor.models import (
-    CheckEvent,
-    CheckSource,
-    DaemonConfig,
-    Policy,
-    RulesetRecord,
-    utc_now,
-)
+from optimcp.monitor.models import CheckEvent, DaemonConfig, RulesetRecord, utc_now
 
 try:
     import yaml  # type: ignore
@@ -77,8 +68,6 @@ class MonitorStore:
                 """
             )
 
-    # ---- config ------------------------------------------------------------
-
     def load_config(self) -> DaemonConfig:
         if not self.config_path.exists():
             return DaemonConfig()
@@ -106,8 +95,6 @@ class MonitorStore:
             return yaml.safe_dump(data, sort_keys=False)
         return json.dumps(data, indent=2) + "\n"
 
-    # ---- rulesets ----------------------------------------------------------
-
     def _ruleset_path(self, ruleset_id: str) -> Path:
         safe = ruleset_id.replace("/", "_").replace("\\", "_")
         return self.rulesets_dir / f"{safe}.yaml"
@@ -124,7 +111,6 @@ class MonitorStore:
     def get_ruleset(self, ruleset_id: str) -> Optional[RulesetRecord]:
         path = self._ruleset_path(ruleset_id)
         if not path.exists():
-            # also try .json
             alt = path.with_suffix(".json")
             if not alt.exists():
                 return None
@@ -144,17 +130,6 @@ class MonitorStore:
                 data["id"] = path.stem
             out.append(RulesetRecord.model_validate(data))
         return out
-
-    def delete_ruleset(self, ruleset_id: str) -> bool:
-        path = self._ruleset_path(ruleset_id)
-        removed = False
-        for p in (path, path.with_suffix(".json")):
-            if p.exists():
-                p.unlink()
-                removed = True
-        return removed
-
-    # ---- checks / violations -----------------------------------------------
 
     def append_check(self, event: CheckEvent) -> CheckEvent:
         with self._connect() as conn:
@@ -192,24 +167,6 @@ class MonitorStore:
     ) -> List[CheckEvent]:
         limit = max(1, min(int(limit), 1000))
         sql = "SELECT * FROM checks WHERE consistent = 0"
-        params: List[Any] = []
-        if ruleset_id:
-            sql += " AND ruleset_id = ?"
-            params.append(ruleset_id)
-        sql += " ORDER BY id DESC LIMIT ?"
-        params.append(limit)
-        with self._connect() as conn:
-            rows = conn.execute(sql, params).fetchall()
-        return [self._row_to_event(r) for r in rows]
-
-    def list_checks(
-        self,
-        *,
-        ruleset_id: Optional[str] = None,
-        limit: int = 100,
-    ) -> List[CheckEvent]:
-        limit = max(1, min(int(limit), 1000))
-        sql = "SELECT * FROM checks WHERE 1=1"
         params: List[Any] = []
         if ruleset_id:
             sql += " AND ruleset_id = ?"
@@ -274,13 +231,4 @@ class MonitorStore:
         }
 
 
-# Re-export helpers used by service
-__all__ = [
-    "MonitorStore",
-    "default_home",
-    "document_hash",
-    "RulesetRecord",
-    "Rule",
-    "Policy",
-    "CheckSource",
-]
+__all__ = ["MonitorStore", "default_home"]

@@ -1,8 +1,4 @@
-"""Function-calling tool schemas for non-MCP agents.
-
-Exports JSON schemas for ``check_consistency`` in the shapes OpenAI and Anthropic
-expect. Optional solver schemas live in :mod:`optimcp.solver.schemas`.
-"""
+"""Function-calling tool schemas for non-MCP agents (OpenAI / Anthropic shapes)."""
 
 from __future__ import annotations
 
@@ -14,17 +10,10 @@ from optimcp.check.rules import Rule
 
 TOOL_NAME = "check_consistency"
 TOOL_DESCRIPTION = (
-    "Verify that a JSON document obeys its declared numeric/logical rules, and "
-    "report PROVABLY which rule broke (computed value vs expected value, with the "
-    "delta). Rules are pure data checked with exact arithmetic and no LLM. Each "
-    "rule is lhs <op> rhs, where an expression is a literal ({'kind':'lit',"
-    "'value':N}), a field ref ({'kind':'ref','path':'invoice.total'}), an "
-    "aggregation over a wildcard path ({'kind':'agg','fn':'sum','path':"
-    "'line_items[*].amount'}), or arithmetic ({'kind':'calc','fn':'sub','args':"
-    "[...]}; fns: add,sub,mul,div,neg,abs,round,pow,pct_change). Use this to catch "
-    "totals that don't match their line items, growth percentages computed the "
-    "wrong way (pct_change(old,new)=(new-old)/old*100), allocations that don't sum "
-    "to the budget, and similar failures - instead of trusting your own arithmetic."
+    "Verify a JSON document against numeric/logical rules and report which rule "
+    "broke (computed vs expected, with delta). Exact Decimal arithmetic, no LLM. "
+    "Expressions: lit, ref, agg (sum/avg/min/max/count), calc "
+    "(add/sub/mul/div/neg/abs/round/pow/pct_change)."
 )
 
 

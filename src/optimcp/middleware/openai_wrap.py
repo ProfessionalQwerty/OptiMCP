@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
-import re
 from typing import Any, Callable, Optional
 
-from optimcp.middleware.client import verify_local_or_remote
-from optimcp.middleware.policy import VerificationRefused, apply_policy, result_as_tool_error
+from optimcp.middleware.policy import (
+    VerificationRefused,
+    result_as_tool_error,
+    verify_then_policy,
+)
 
 
 def extract_json_object(text: str) -> Optional[dict]:
@@ -24,13 +26,7 @@ def extract_json_object(text: str) -> Optional[dict]:
 
 
 class VerifyingOpenAI:
-    """Thin wrapper: after each completion, optionally verify extracted JSON.
-
-    Usage::
-
-        client = VerifyingOpenAI(OpenAI(), ruleset_id="invoices", raise_on_refuse=True)
-        resp = client.chat.completions.create(...)
-    """
+    """Thin wrapper: after each completion, optionally verify extracted JSON."""
 
     def __init__(
         self,
@@ -49,14 +45,14 @@ class VerifyingOpenAI:
         self.chat = _ChatNamespace(self)
 
     def verify_document(self, document: dict, *, correlation_id: Optional[str] = None):
-        result = verify_local_or_remote(
+        return verify_then_policy(
             self.ruleset_id,
             document,
             correlation_id=correlation_id,
             prefer_remote=self.prefer_remote,
             source="agent",
+            raise_on_refuse=self.raise_on_refuse,
         )
-        return apply_policy(result, raise_on_refuse=self.raise_on_refuse)
 
 
 class _ChatNamespace:
@@ -81,7 +77,6 @@ class _Completions:
         try:
             self._parent.verify_document(doc)
         except VerificationRefused as exc:
-            # Attach structured error for callers that catch it; re-raise.
             exc.result_payload = result_as_tool_error(exc.result)  # type: ignore[attr-defined]
             raise
         return resp

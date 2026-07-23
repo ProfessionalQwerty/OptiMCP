@@ -1,4 +1,4 @@
-"""Models for the always-on verification layer (named rulesets + audit events)."""
+"""Models for named rulesets and audit events."""
 
 from __future__ import annotations
 
@@ -58,12 +58,6 @@ class CheckEvent(BaseModel):
     correlation_id: Optional[str] = None
     policy: Policy = "observe"
     refused: bool = False
-
-
-class ViolationRecord(CheckEvent):
-    """A check that was not consistent (broken or unevaluable)."""
-
-    pass
 
 
 class VerifyResult(BaseModel):

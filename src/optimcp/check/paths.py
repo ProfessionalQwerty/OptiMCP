@@ -1,15 +1,4 @@
-"""Deterministic path resolution over a JSON document.
-
-Paths look like ``invoice.total``, ``line_items[0].amount`` or, for
-aggregations, ``line_items[*].amount``. Grammar (informal)::
-
-    path      := segment ('.' segment)*
-    segment   := key? ('[' (int | '*') ']')*
-
-Resolution never raises on bad data: it returns a :class:`PathError` describing
-exactly what was missing so the caller can report an un-evaluable rule instead of
-crashing.
-"""
+"""Path resolution over JSON (``invoice.total``, ``line_items[*].amount``)."""
 
 from __future__ import annotations
 

@@ -67,7 +67,7 @@ def create_app(
 
     app = FastAPI(
         title="OptiMCP daemon",
-        version="0.3.0",
+        version="0.4.0",
         description="Always-on verification layer over agent structured emissions.",
     )
     app.state.optimcp = state  # type: ignore[attr-defined]

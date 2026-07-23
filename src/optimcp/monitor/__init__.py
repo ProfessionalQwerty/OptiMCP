@@ -1,4 +1,4 @@
-"""Always-on verification layer: named rulesets, audit log, alerts."""
+"""Always-on verification: named rulesets, audit log, alerts."""
 
 from __future__ import annotations
 

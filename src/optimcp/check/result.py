@@ -1,12 +1,4 @@
-"""Result models for the consistency checker.
-
-The :class:`ConsistencyReport` is the whole product surface: for each rule it
-says whether it held, and for the ones that did not, it names them and shows the
-computed value against the expected value with the exact delta. A rule that
-cannot even be evaluated (a missing or non-numeric field) is reported as *not
-passed* - never silently skipped - because a checker that quietly ignores a rule
-is a checker that lies.
-"""
+"""Result models for the consistency checker."""
 
 from __future__ import annotations
 

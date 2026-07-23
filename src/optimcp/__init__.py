@@ -1,13 +1,8 @@
 """OptiMCP - verification layer over agent structured emissions.
 
-OptiMCP checks whether structured output obeys declared numeric/logical rules
-and *provably tells you which rule broke*. Use :func:`check_consistency` for
-one-shot checks, or register named rulesets and run the self-hosted daemon for
-always-on monitoring with observe/refuse policies.
-
-No LLM is used inside OptiMCP: every number is recomputed in exact Decimal
-arithmetic. Optional constraint solving lives in :mod:`optimcp.solver`
-(``pip install optimcp[solver]``).
+Use :func:`check_consistency` for one-shot checks, or register named rulesets
+and run the self-hosted daemon for always-on monitoring with observe/refuse
+policies. Every number is recomputed in exact Decimal arithmetic (no LLM).
 """
 
 from optimcp.check import (
@@ -26,7 +21,7 @@ from optimcp.monitor import (
     document_hash,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "ConsistencyReport",

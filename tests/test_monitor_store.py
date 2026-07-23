@@ -92,7 +92,7 @@ def test_alert_webhook_does_not_block_verify(tmp_path: Path, monkeypatch):
         time.sleep(2.0)
         return False
 
-    monkeypatch.setattr("optimcp.monitor.alerts.notify_violation", slow_notify)
+    monkeypatch.setattr("optimcp.monitor.service.notify_violation", slow_notify)
     store = MonitorStore(home=tmp_path)
     cfg = store.load_config().model_copy(
         update={"alert_webhook_url": "http://example.invalid/hook"}

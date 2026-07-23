@@ -10,20 +10,14 @@ from pathlib import Path
 from typing import Optional
 
 from optimcp.daemon.auth import AuthError, is_loopback_host
-from optimcp.monitor.models import DaemonConfig, RulesetRecord
+from optimcp.monitor.models import RulesetRecord
 from optimcp.monitor.service import MonitorService
 from optimcp.monitor.store import MonitorStore, default_home
 
 
 def _load_ruleset_file(path: Path) -> RulesetRecord:
-    text = path.read_text(encoding="utf-8")
-    try:
-        import yaml  # type: ignore
-
-        data = yaml.safe_load(text)
-    except ImportError:
-        data = json.loads(text)
-    if not isinstance(data, dict):
+    data = MonitorStore._parse_mapping(path.read_text(encoding="utf-8"))
+    if not data:
         raise SystemExit(f"ruleset file must be a mapping: {path}")
     if "id" not in data:
         data["id"] = path.stem
@@ -97,6 +91,18 @@ def cmd_list(args: argparse.Namespace) -> None:
     print(json.dumps([r.model_dump(mode="json") for r in rows], indent=2))
 
 
+def _add_serve_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--host", default=None)
+    parser.add_argument("--port", type=int, default=None)
+    parser.add_argument("--token", default=None, help="Set OPTIMCP_DAEMON_TOKEN for this process")
+    parser.add_argument(
+        "--allow-unauthenticated-localhost",
+        action="store_true",
+        help="Allow unauthenticated /v1 when binding loopback AND no token is set",
+    )
+    parser.set_defaults(func=cmd_daemon)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="optimcp-daemon", description="OptiMCP verification daemon")
     p.add_argument(
@@ -106,24 +112,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = p.add_subparsers(dest="command", required=True)
 
-    d = sub.add_parser("serve", help="Run the HTTP daemon")
-    d.add_argument("--host", default=None)
-    d.add_argument("--port", type=int, default=None)
-    d.add_argument("--token", default=None, help="Set OPTIMCP_DAEMON_TOKEN for this process")
-    d.add_argument(
-        "--allow-unauthenticated-localhost",
-        action="store_true",
-        help="Allow unauthenticated /v1 when binding loopback AND no token is set",
-    )
-    d.set_defaults(func=cmd_daemon)
-
-    # alias: `optimcp-daemon daemon` also works as `serve`
-    d2 = sub.add_parser("daemon", help="Alias for serve")
-    d2.add_argument("--host", default=None)
-    d2.add_argument("--port", type=int, default=None)
-    d2.add_argument("--token", default=None)
-    d2.add_argument("--allow-unauthenticated-localhost", action="store_true")
-    d2.set_defaults(func=cmd_daemon)
+    _add_serve_args(sub.add_parser("serve", help="Run the HTTP daemon"))
+    _add_serve_args(sub.add_parser("daemon", help="Alias for serve"))
 
     r = sub.add_parser("register", help="Register a ruleset from a YAML/JSON file")
     r.add_argument("file", help="Path to ruleset file")

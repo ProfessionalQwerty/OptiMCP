@@ -26,6 +26,8 @@ flowchart LR
 
 One-shot `check_consistency(document, rules)` is still available for ad-hoc checks; production monitoring uses **named rulesets** + the daemon.
 
+OptiMCP **detects** which rule broke. It does **not** auto-repair or solve for a fix.
+
 ---
 
 ## Why this exists
@@ -50,8 +52,7 @@ This isn't finance-only. Anywhere an agent emits **numbers or facts subject to r
 | A check an LLM cannot fake | No LLM inside; every number recomputed independently in exact `Decimal` |
 | To never be lied to by silence | Unevaluable rules (missing/non-numeric) count as **failed**, never skipped |
 | Safe self-hosting | Bearer token on all `/v1/*` (`OPTIMCP_DAEMON_TOKEN`); unauthenticated only with explicit loopback opt-out |
-| To wire it into any stack | MCP tools, OpenAI wrapper, LangChain callback, HTTP `/v1/check` |
-| Optional linear repair | `pip install optimcp[solver]` → `optimcp.solver.try_repair` |
+| To wire it into any stack | MCP tools, OpenAI wrapper, LangChain StructuredTool, HTTP `/v1/check` |
 
 ---
 
@@ -66,11 +67,10 @@ This isn't finance-only. Anywhere an agent emits **numbers or facts subject to r
 7. [What it catches (worked example)](#what-it-catches-worked-example)
 8. [How it works](#how-it-works)
 9. [What "guaranteed" means (honestly)](#what-guaranteed-means-honestly)
-10. [Optional: solver extra](#optional-solver-extra)
-11. [Examples](#examples)
-12. [Troubleshooting](#troubleshooting)
-13. [Repository layout](#repository-layout)
-14. [License](#license)
+10. [Examples](#examples)
+11. [Troubleshooting](#troubleshooting)
+12. [Repository layout](#repository-layout)
+13. [License](#license)
 
 ---
 
@@ -79,16 +79,15 @@ This isn't finance-only. Anywhere an agent emits **numbers or facts subject to r
 **Requirements**
 
 - Python **3.10+**
-- Core: pure Python + Pydantic + MCP. Daemon extras add FastAPI/uvicorn. Solver extras add OR-Tools + D-Wave samplers.
+- Core: pure Python + Pydantic + MCP. Daemon extras add FastAPI/uvicorn.
 
 **PyPI**
 
 ```bash
 pip install optimcp
 pip install "optimcp[daemon]"     # always-on HTTP daemon + YAML rulesets
-pip install "optimcp[langchain]"  # LangChain StructuredTool + callbacks
-pip install "optimcp[solver]"     # optional CP-SAT + annealer repair path
-pip install "optimcp[dev]"        # pytest + daemon + solver test deps
+pip install "optimcp[langchain]"  # LangChain StructuredTool
+pip install "optimcp[dev]"        # pytest + daemon test deps
 ```
 
 | Command / module | Purpose |
@@ -271,7 +270,7 @@ Each `RuleCheck`:
 
 ## What it catches (worked example)
 
-The two failure modes the literature calls *structural* for LLMs — a wrongly-directed growth percentage and a table that doesn't cross-foot — caught deterministically ([`examples/check_financial_report.py`](examples/check_financial_report.py), no API key needed):
+The two failure modes the literature calls *structural* for LLMs — a wrongly-directed growth percentage and a table that doesn't cross-foot — caught deterministically:
 
 ```text
 Auditing financial report for Q3 2026 (4 rules, deterministic, no LLM)
@@ -304,32 +303,8 @@ That independence is the whole point: it is the check an LLM's own reasoning can
 
 - **Guaranteed:** for each rule, the verdict (held / violated / unevaluable) is computed **correctly and independently** of whatever produced the document, in exact arithmetic. A false "consistent" cannot come from float drift, a silently skipped rule, or a missing field.
 - **Scope:** the checker verifies the rules you *wrote down*, not the ones you *meant*. If you forget to declare "segments must sum to total," it won't invent it. Declare the invariants that matter; the report echoes each one back.
-- **Not claimed:** that your ruleset is complete, or that a `consistent` document is "correct" in some larger sense — only that it satisfies the stated rules.
+- **Not claimed:** that your ruleset is complete, that a `consistent` document is "correct" in some larger sense, or that OptiMCP will invent a repaired document — only that the stated rules were checked.
 - **False positives:** the checker is covered by unit tests against known-correct and known-broken documents. It errs toward *reporting* problems (unevaluable rules count as failures), never toward hiding them.
-
----
-
-## Optional: solver extra
-
-Detecting the break is the product. For **linear scalar** rules only, install the optional solver and call `try_repair`:
-
-```bash
-pip install "optimcp[solver]"
-```
-
-```python
-from optimcp.check.rules import Ruleset, Rule
-from optimcp.solver import try_repair
-
-rules = Ruleset(rules=[...])  # linear rules over scalar refs only
-fixed = try_repair(
-    rules,
-    variables=[{"name": "a", "kind": "integer", "lb": 0, "ub": 10}, ...],
-    objective={"sense": "maximize", "terms": [{"vars": ["a"]}]},
-)
-```
-
-Aggregations, division by a variable, or products of two fields are **not** repairable — the checker reports the violation and returns `None`. See `optimcp.solver` for `solve_decision`, `verify_assignment`, and function-calling schemas.
 
 ---
 
@@ -367,9 +342,8 @@ OptiMCP/
     check/          Decimal consistency kernel
     monitor/        Named rulesets, SQLite audit log, canonical hashing, alerts
     daemon/         FastAPI app, bearer auth, dashboard, CLI
-    middleware/     OpenAI wrap, LangChain helpers, refuse/observe policy
+    middleware/     OpenAI wrap, LangChain StructuredTool, refuse/observe policy
     server.py       MCP tools (verify_against_ruleset, check_consistency, …)
-    solver/         Optional CP-SAT + annealer (pip install optimcp[solver])
   examples/
   tests/
 ```

@@ -1,9 +1,4 @@
-"""Canonical document hashing for audit-trail continuity.
-
-Two semantically identical documents must produce the same SHA-256 digest even
-when key order, insignificant whitespace, or number formatting differ. All store
-and service code must hash via :func:`document_hash` only.
-"""
+"""Canonical SHA-256 hashing for audit-trail continuity."""
 
 from __future__ import annotations
 

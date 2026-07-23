@@ -82,7 +82,7 @@ def test_capabilities_tool():
     assert caps["primary_tool"] == "verify_against_ruleset"
     assert "verification_layer" in caps
     assert caps["verification_layer"]["daemon"]["token_env"] == "OPTIMCP_DAEMON_TOKEN"
-    assert "optional_solver" in caps
+    assert "optional_solver" not in caps
     cc = caps["check_consistency"]
     assert set(cc["expression_kinds"]) == {"lit", "ref", "agg", "calc"}
     assert "sum" in cc["aggregations"]
