@@ -36,7 +36,7 @@ MAX_EXPR_NODES = 200
 
 
 class Expr(BaseModel):
-    """A single node of the expression AST (see module docstring)."""
+    """Expression AST node: ``lit``, ``ref``, ``agg``, or ``calc``."""
 
     kind: ExprKind
     value: Optional[float] = Field(None, description="Literal number (kind='lit').")
