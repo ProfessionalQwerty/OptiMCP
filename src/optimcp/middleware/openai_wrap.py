@@ -77,6 +77,6 @@ class _Completions:
         try:
             self._parent.verify_document(doc)
         except VerificationRefused as exc:
-            exc.result_payload = result_as_tool_error(exc.result)  # type: ignore[attr-defined]
+            exc.result_payload = result_as_tool_error(exc.result)
             raise
         return resp

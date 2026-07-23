@@ -13,6 +13,7 @@ class VerificationRefused(Exception):
 
     def __init__(self, result: VerifyResult) -> None:
         self.result = result
+        self.result_payload: Optional[dict[str, Any]] = None
         super().__init__(
             f"verification refused for ruleset {result.ruleset_id!r}: {result.report.summary}"
         )
