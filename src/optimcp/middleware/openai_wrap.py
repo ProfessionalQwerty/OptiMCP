@@ -10,9 +10,10 @@ from optimcp.middleware.policy import (
     result_as_tool_error,
     verify_then_policy,
 )
+from optimcp.monitor.models import VerifyResult
 
 
-def extract_json_object(text: str) -> Optional[dict]:
+def extract_json_object(text: str) -> Optional[dict[str, Any]]:
     if not text:
         return None
     start, end = text.find("{"), text.rfind("}")
@@ -34,7 +35,7 @@ class VerifyingOpenAI:
         *,
         ruleset_id: str,
         raise_on_refuse: bool = True,
-        extractor: Optional[Callable[[str], Optional[dict]]] = None,
+        extractor: Optional[Callable[[str], Optional[dict[str, Any]]]] = None,
         prefer_remote: bool = True,
     ) -> None:
         self._client = client
@@ -44,7 +45,9 @@ class VerifyingOpenAI:
         self.prefer_remote = prefer_remote
         self.chat = _ChatNamespace(self)
 
-    def verify_document(self, document: dict, *, correlation_id: Optional[str] = None):
+    def verify_document(
+        self, document: dict, *, correlation_id: Optional[str] = None
+    ) -> VerifyResult:
         return verify_then_policy(
             self.ruleset_id,
             document,
