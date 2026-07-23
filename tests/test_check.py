@@ -307,3 +307,18 @@ def test_division_by_zero_is_unevaluable():
     )
     assert "div0" in rep.unevaluable
     assert not rep.consistent
+
+
+def test_percent_and_suffix_string_coercion():
+    rep = check_consistency(
+        {"rate": "40%", "size": "1.2m"},
+        [
+            _rule(id="pct", lhs={"kind": "ref", "path": "rate"}, op="==",
+                  rhs={"kind": "lit", "value": 40}),
+            _rule(id="suffix", lhs={"kind": "ref", "path": "size"}, op="==",
+                  rhs={"kind": "lit", "value": 1_200_000}),
+        ],
+    )
+    assert rep.consistent
+    assert any("40%" in n for n in rep.notes)
+    assert any("1.2m" in n for n in rep.notes)
