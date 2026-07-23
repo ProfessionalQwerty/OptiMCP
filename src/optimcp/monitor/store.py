@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -179,8 +180,6 @@ class MonitorStore:
 
     @staticmethod
     def _row_to_event(row: sqlite3.Row) -> CheckEvent:
-        from datetime import datetime
-
         ts = row["timestamp"]
         try:
             timestamp = datetime.fromisoformat(ts)
