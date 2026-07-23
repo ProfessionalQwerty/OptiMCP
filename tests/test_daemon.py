@@ -74,6 +74,18 @@ def test_v1_requires_token(home: Path, monkeypatch):
     assert ok.json()["rulesets"][0]["id"] == "inv"
 
 
+def test_unequal_length_bearer_token_is_401(home: Path, monkeypatch):
+    """Wrong-length tokens must 401, not raise ValueError from compare_digest."""
+    from optimcp.daemon.auth import check_request_token
+
+    with pytest.raises(AuthError) as exc:
+        check_request_token("Bearer x", "secret", required=True)
+    assert exc.value.status_code == 401
+
+    c = TestClient(_app(home, monkeypatch=monkeypatch))
+    assert c.get("/v1/rulesets", headers={"Authorization": "Bearer x"}).status_code == 401
+
+
 def test_check_and_violations(home: Path, monkeypatch):
     headers = {"Authorization": "Bearer secret"}
     c = TestClient(_app(home, monkeypatch=monkeypatch))

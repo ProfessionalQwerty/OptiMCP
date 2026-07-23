@@ -107,5 +107,8 @@ def check_request_token(
     if not expected:
         raise AuthError("daemon token not configured", status_code=401)
     presented = extract_bearer(authorization)
-    if presented is None or not hmac.compare_digest(presented, expected):
+    if presented is None:
+        raise AuthError("invalid or missing bearer token", status_code=401)
+    # compare_digest raises ValueError on unequal lengths (Py < 3.12); treat as 401
+    if len(presented) != len(expected) or not hmac.compare_digest(presented, expected):
         raise AuthError("invalid or missing bearer token", status_code=401)
