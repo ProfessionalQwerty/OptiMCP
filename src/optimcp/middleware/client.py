@@ -99,14 +99,16 @@ def verify_local_or_remote(
     prefer_remote: bool = True,
     source: str = "agent",
 ) -> VerifyResult:
-    """Try the daemon first; fall back to in-process MonitorStore."""
+    """Try the daemon first; fall back to in-process MonitorStore only if unreachable."""
     if prefer_remote:
         try:
             return verify_remote(
                 ruleset_id, document, correlation_id=correlation_id
             )
-        except DaemonClientError:
-            pass
+        except DaemonClientError as exc:
+            # HTTP errors (401/404/5xx) must surface; only soft-fail on no connection
+            if exc.status is not None:
+                raise
     try:
         return MonitorService(store=MonitorStore()).verify(
             ruleset_id,
