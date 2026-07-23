@@ -290,3 +290,20 @@ def test_invalid_expr_rejected_at_validation():
     with pytest.raises(Exception):
         Expr.model_validate({"kind": "calc", "fn": "sub", "args": [
             {"kind": "lit", "value": 1}]})  # sub needs 2 args
+
+
+def test_division_by_zero_is_unevaluable():
+    rep = check_consistency(
+        {"a": 10, "b": 0},
+        [_rule(
+            id="div0",
+            lhs={"kind": "calc", "fn": "div", "args": [
+                {"kind": "ref", "path": "a"},
+                {"kind": "ref", "path": "b"},
+            ]},
+            op="==",
+            rhs={"kind": "lit", "value": 1},
+        )],
+    )
+    assert "div0" in rep.unevaluable
+    assert not rep.consistent
