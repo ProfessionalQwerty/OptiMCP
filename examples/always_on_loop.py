@@ -52,7 +52,7 @@ def main() -> None:
         {"a": 1, "b": 1},  # breaks
     ]
     for i, doc in enumerate(stream):
-        r = svc.verify("budgets", doc, source="http", correlation_id=f"evt-{i}", alert=False)
+        r = svc.verify("budgets", doc, source="cli", correlation_id=f"evt-{i}", alert=False)
         mark = "OK" if r.report.consistent else "XX"
         print(f"[{mark}] evt-{i}  {doc}  -> {r.report.summary}")
 
